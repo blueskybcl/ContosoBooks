@@ -8,6 +8,7 @@ namespace ContosoBooks.Models
 {
     public class Author
     {
+        [ScaffoldColumn(false)]
         public int AuthorID { get; set; }
 
         [Display(Name = "Last Name")]

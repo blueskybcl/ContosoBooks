@@ -5,6 +5,8 @@ using ContosoBooks.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNet.Http;
+using ContosoBooks.Middleware;
 
 namespace ContosoBooks
 {
@@ -58,8 +60,81 @@ namespace ContosoBooks
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
             SampleData.Initialize(app.ApplicationServices);
+            ConfigureLogInline(app, loggerFactory);
+            //ConfigureMapping(app);
+            //ConfigureMapWhen(app);
+            //ConfigureLogMiddleware(app, loggerFactory);
         }
+        public void ConfigureLogMiddleware(IApplicationBuilder app,ILoggerFactory loggerfactory)
+        {
+            loggerfactory.AddConsole(minLevel: LogLevel.Information);
 
+            app.UseRequestLogger();
+
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Hello from Middleware" );
+            });
+        }
+        public void ConfigureLogInline(IApplicationBuilder app, ILoggerFactory loggerfactory)
+        {
+            loggerfactory.AddConsole(minLevel: LogLevel.Information);
+            var logger = loggerfactory.CreateLogger("LogInline");
+            app.Use(async (context, next) =>
+            {
+                logger.LogInformation("Handling request.");
+                await next.Invoke();
+                logger.LogInformation("Finished handling request.");
+            });
+
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Hello from LogInline");
+            });
+        }
+        public void ConfigureEnvironmentOne(IApplicationBuilder app)
+        {
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Hello from EnvironmentOne");
+            });
+        }
+        public void ConfigureEnvironmentTwo(IApplicationBuilder app)
+        {
+            app.Use(next => async context =>
+            {
+                await context.Response.WriteAsync("Hello from EnvironmentTwo");
+            });
+        }
+        private static void HandleMapTest(IApplicationBuilder app)
+        {
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Map Test Successful");
+            });
+        }
+        public void ConfigureMapping(IApplicationBuilder app)
+        {
+            app.Map("/maptest", HandleMapTest);
+        }
+        private static void HandleBranch(IApplicationBuilder app)
+        {
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Branch used.");
+            });
+        }
+        public void ConfigureMapWhen(IApplicationBuilder app)
+        {
+            app.MapWhen(context => {
+                return context.Request.Query.ContainsKey("branch");
+            }, HandleBranch);
+
+            app.Run(async context =>
+            {
+                await context.Response.WriteAsync("Hello from MapWhen");
+            });
+        }
         // Entry point for the application.
         public static void Main(string[] args) => WebApplication.Run<Startup>(args);
     }
